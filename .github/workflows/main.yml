@@ -38,6 +38,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "build/app/outputs/flutter-apk/app-release.apk"
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.whatsapp_toolki}}
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}

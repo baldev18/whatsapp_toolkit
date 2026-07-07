@@ -1,0 +1,8 @@
+# This file is a template for the signing configuration.
+# Rename this file to 'key.properties' locally and fill in your secrets.
+# DO NOT commit the real 'key.properties' file to version control.
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=YOUR_KEY_ALIAS
+storeFile=../upload-keystore.jks

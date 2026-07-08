@@ -18,6 +18,8 @@ import 'services/interstitial_ad_manager.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
+import 'package:flutter/foundation.dart';
+
 // Har Flutter app ma "main()" function j sauthi pehla run thay che
 // Aa app ni entry point (shuruaat) che
 //
@@ -41,23 +43,25 @@ void main() async {
   // Saved value pramane themeNotifier ne shuruaat ma j set karvu
   themeNotifier.value = isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
-  // Timezone data initialize karvu - notification ne saachа
-  // samay par batavva mate jaruri chhe
-  tz.initializeTimeZones();
+  if (!kIsWeb) {
+    // Timezone data initialize karvu - notification ne saachа
+    // samay par batavva mate jaruri chhe
+    tz.initializeTimeZones();
 
-  // Notification plugin ne setup karvu
-  const androidSettings =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidSettings);
-  await notificationsPlugin.initialize(initSettings);
+    // Notification plugin ne setup karvu
+    const androidSettings =
+    AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidSettings);
+    await notificationsPlugin.initialize(initSettings);
 
-  // AdMob ne initialize karvu - aa vagar ads nahi dekhay
-  await MobileAds.instance.initialize();
+    // AdMob ne initialize karvu - aa vagar ads nahi dekhay
+    await MobileAds.instance.initialize();
 
-  // App shuru thata j pehli interstitial ad load karvanu shuru
-  // karo, jethi jyare pehli vaar jaruri pade tyare tarat j
-  // dekhadi shakay
-  InterstitialAdManager.loadAd();
+    // App shuru thata j pehli interstitial ad load karvanu shuru
+    // karo, jethi jyare pehli vaar jaruri pade tyare tarat j
+    // dekhadi shakay
+    InterstitialAdManager.loadAd();
+  }
 
   // Phone ma pehla thi premium khareedelu chhe ke nahi e check karvu
   final bool isPremium = prefs.getBool('isPremium') ?? false;

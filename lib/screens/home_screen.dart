@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../state/app_notifiers.dart';
 import '../config/ad_config.dart';
+import 'FeedbackScreen.dart';
 import 'direct_chat_screen.dart';
 import 'status_saver_screen.dart';
 import 'text_repeater_screen.dart';
@@ -156,17 +158,30 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
+          if (!kIsWeb)
+            _buildToolCard(
+              context: context,
+              icon: Icons.photo_library,
+              title: 'Status Saver',
+              subtitle: 'WhatsApp status na photo/video save karo',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const StatusSaverScreen(),
+                  ),
+                );
+              },
+            ),
           _buildToolCard(
             context: context,
-            icon: Icons.photo_library,
-            title: 'Status Saver',
-            subtitle: 'WhatsApp status na photo/video save karo',
+            icon: Icons.feedback,
+            title: 'Feedback',
+            subtitle: 'Suggestion ya problem moklo',
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const StatusSaverScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => const FeedbackScreen()),
               );
             },
           ),
@@ -228,34 +243,36 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          _buildToolCard(
-            context: context,
-            icon: Icons.cleaning_services,
-            title: 'WhatsApp Cleaner',
-            subtitle: 'Junk photos/videos delete karine space bachavo',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const WhatsAppCleanerScreen(),
-                ),
-              );
-            },
-          ),
-          _buildToolCard(
-            context: context,
-            icon: Icons.notifications_active,
-            title: 'Backup Reminder',
-            subtitle: 'WhatsApp backup karva mate yaad karavo',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const BackupReminderScreen(),
-                ),
-              );
-            },
-          ),
+          if (!kIsWeb)
+            _buildToolCard(
+              context: context,
+              icon: Icons.cleaning_services,
+              title: 'WhatsApp Cleaner',
+              subtitle: 'Junk photos/videos delete karine space bachavo',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const WhatsAppCleanerScreen(),
+                  ),
+                );
+              },
+            ),
+          if (!kIsWeb)
+            _buildToolCard(
+              context: context,
+              icon: Icons.notifications_active,
+              title: 'Backup Reminder',
+              subtitle: 'WhatsApp backup karva mate yaad karavo',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const BackupReminderScreen(),
+                  ),
+                );
+              },
+            ),
         ],
       ),
       // Bottom ma banner ad - fakt premium na hoy ane ad load
@@ -263,7 +280,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: ValueListenableBuilder<bool>(
         valueListenable: isPremiumNotifier,
         builder: (context, isPremium, child) {
-          if (isPremium || !_isBannerLoaded || _bannerAd == null) {
+          if (isPremium || !_isBannerLoaded || _bannerAd == null || kIsWeb) {
             // Premium user ne ke jyare ad load nathi thayo tyare
             // kai j jagya na rokvi (height 0)
             return const SizedBox.shrink();

@@ -9,10 +9,6 @@ import '../services/notification_service.dart';
 // BACKUP REMINDER - WhatsApp chats backup karva mate periodic
 // notification set karva ni screen
 // ============================================================
-// Concept: User Daily ya Weekly reminder + time select kare chhe.
-// Apde flutter_local_notifications vaparine ek "repeating"
-// notification schedule karie chhe je e samay par vaage.
-// ============================================================
 class BackupReminderScreen extends StatefulWidget {
   const BackupReminderScreen({super.key});
 
@@ -21,12 +17,11 @@ class BackupReminderScreen extends StatefulWidget {
 }
 
 class _BackupReminderScreenState extends State<BackupReminderScreen> {
-  // Notification ID - jyare cancel karvu hoy tyare aa ID vaparay chhe
   static const int _notificationId = 100;
 
   bool _isReminderOn = false;
-  String _frequency = 'Daily'; // 'Daily' ya 'Weekly'
-  TimeOfDay _selectedTime = const TimeOfDay(hour: 20, minute: 0); // Default 8 PM
+  String _frequency = 'Daily';
+  TimeOfDay _selectedTime = const TimeOfDay(hour: 20, minute: 0);
 
   @override
   void initState() {
@@ -34,7 +29,6 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
     _loadSavedSettings();
   }
 
-  // Pehla thi save thayela settings vaanchva mate
   Future<void> _loadSavedSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -46,7 +40,6 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
     });
   }
 
-  // Settings ne save karva mate
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('reminderOn', _isReminderOn);
@@ -55,7 +48,6 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
     await prefs.setInt('reminderMinute', _selectedTime.minute);
   }
 
-  // Time picker kholva mate
   Future<void> _pickTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -63,7 +55,6 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
     );
     if (picked != null) {
       setState(() => _selectedTime = picked);
-      // Jo reminder already ON hoy to navi time sathe re-schedule karo
       if (_isReminderOn) {
         await _scheduleNotification();
       }
@@ -71,9 +62,12 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
     }
   }
 
-  // Actual notification schedule karva mate
+  // ============================================================
+  // Actual notification schedule karva mate - FIXED VERSION
+  // Exact alarm permission check kare chhe, na hoy to "inexact"
+  // mode ma automatically switch thai jay chhe (error na aave)
+  // ============================================================
   Future<void> _scheduleNotification() async {
-    // Aaje na date/time ma selected time set karvi
     final now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
       tz.local,
@@ -84,19 +78,27 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
       _selectedTime.minute,
     );
 
-    // Jo aaje nu selected time pasar thai gayu hoy, to kale thi shuru karo
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
     const androidDetails = AndroidNotificationDetails(
-      'backup_reminder_channel', // Channel ID
-      'Backup Reminders', // Channel naam (Android settings ma dekhay)
+      'backup_reminder_channel',
+      'Backup Reminders',
       channelDescription: 'WhatsApp backup karva mate reminder',
       importance: Importance.high,
       priority: Priority.high,
     );
     const notificationDetails = NotificationDetails(android: androidDetails);
+
+    // Exact alarm permission chhe ke nahi check karvu
+    bool canScheduleExact = false;
+    try {
+      final exactAlarmStatus = await Permission.scheduleExactAlarm.status;
+      canScheduleExact = exactAlarmStatus.isGranted;
+    } catch (e) {
+      canScheduleExact = false;
+    }
 
     await notificationsPlugin.zonedSchedule(
       _notificationId,
@@ -104,31 +106,30 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
       'Tamara WhatsApp chats backup karvanu na bhulso!',
       scheduledDate,
       notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      // Purana flutter_local_notifications version ma aa parameter
-      // required chhe - "absoluteTime" no matlab e ke apde je
-      // scheduledDate nakhi chhe e j exact samay par notification aavse
-      // (device timezone pramane, koi conversion vagar)
+      androidScheduleMode: canScheduleExact
+          ? AndroidScheduleMode.exactAllowWhileIdle
+          : AndroidScheduleMode.inexactAllowWhileIdle,
+      // Tamara installed version ma aa parameter REQUIRED chhe -
+      // "absoluteTime" no matlab e ke apde je scheduledDate nakhi
+      // chhe e j exact samay par notification aavse
       uiLocalNotificationDateInterpretation:
       UILocalNotificationDateInterpretation.absoluteTime,
-      // matchDateTimeComponents = repeat karva mate:
-      // .time = daily (roj aa samay e)
-      // .dayOfWeekAndTime = weekly (aa vaar ane samay e)
       matchDateTimeComponents: _frequency == 'Daily'
           ? DateTimeComponents.time
           : DateTimeComponents.dayOfWeekAndTime,
     );
   }
 
-  // Reminder ne cancel/band karva mate
   Future<void> _cancelNotification() async {
     await notificationsPlugin.cancel(_notificationId);
   }
 
-  // Toggle switch dabave tyare
+  // ============================================================
+  // Toggle switch dabave tyare - FIXED VERSION
+  // Exact alarm permission pan maange chhe (optional)
+  // ============================================================
   Future<void> _onToggleChanged(bool value) async {
     if (value) {
-      // ON karva mate pehla notification permission check karo
       final status = await Permission.notification.request();
       if (!status.isGranted) {
         if (mounted) {
@@ -139,6 +140,13 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
         }
         return;
       }
+
+      try {
+        await Permission.scheduleExactAlarm.request();
+      } catch (e) {
+        // Juna Android version ma aa permission exist j nathi
+      }
+
       await _scheduleNotification();
     } else {
       await _cancelNotification();
@@ -159,7 +167,6 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Explanation card
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -173,13 +180,10 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
               style: TextStyle(fontSize: 14),
             ),
           ),
-
           const SizedBox(height: 24),
-
-          // Main ON/OFF toggle
           Card(
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
             child: SwitchListTile(
               title: const Text('Reminder Chalu Karo'),
               subtitle: Text(_isReminderOn ? 'Chalu chhe' : 'Band chhe'),
@@ -188,10 +192,7 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
               onChanged: _onToggleChanged,
             ),
           ),
-
           const SizedBox(height: 16),
-
-          // Frequency selection (Daily/Weekly)
           const Text(
             'Ketli vaar yaad karavvu:',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -226,18 +227,15 @@ class _BackupReminderScreenState extends State<BackupReminderScreen> {
               ),
             ],
           ),
-
           const SizedBox(height: 24),
-
-          // Time selection
           const Text(
             'Kaya samay e:',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Card(
-            shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
             child: ListTile(
               leading: const Icon(Icons.access_time, color: Colors.green),
               title: Text(_selectedTime.format(context)),

@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import firebase_core
 import flutter_local_notifications
 import in_app_purchase_storekit
 import mobile_scanner
@@ -13,6 +14,7 @@ import url_launcher_macos
 import webview_flutter_wkwebview
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  FLTFirebaseCorePlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseCorePlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   InAppPurchasePlugin.register(with: registry.registrar(forPlugin: "InAppPurchasePlugin"))
   MobileScannerPlugin.register(with: registry.registrar(forPlugin: "MobileScannerPlugin"))

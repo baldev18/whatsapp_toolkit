@@ -15,6 +15,8 @@ import 'app.dart';
 import 'state/app_notifiers.dart';
 import 'services/notification_service.dart';
 import 'services/interstitial_ad_manager.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 // Har Flutter app ma "main()" function j sauthi pehla run thay che
 // Aa app ni entry point (shuruaat) che
@@ -25,6 +27,9 @@ void main() async {
   // Flutter ne kahevu padu chhe ke "hu tayar chhu plugins vaparva
   // mate" - async main() vaparta aa line jaruri chhe
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   // Phone ni andar save thayela settings vaanchva mate
   final prefs = await SharedPreferences.getInstance();

@@ -1,18 +1,11 @@
-// ============================================================
-// STATUS SAVER - WhatsApp status (photos/videos) save karva mate
-// ============================================================
-// Aa file "status_saver_screen.dart" naame save karo, jya tamari
-// baaki ni screens chhe e j folder ma
-//
-// IMPORTANT: Aa feature mate WhatsAppCleanerScreen jevi j
-// "All Files Access" permission joiye chhe (permission_handler
-// ane 'dart:io' pehla thi j tamara project ma chhe)
-// ============================================================
-
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:gal/gal.dart';
+import '../services/file_utils.dart';
+import '../state/app_strings.dart';
+import '../config/app_theme.dart';
+import '../widgets/gradient_button.dart';
 
 class StatusSaverScreen extends StatefulWidget {
   const StatusSaverScreen({super.key});
@@ -22,23 +15,21 @@ class StatusSaverScreen extends StatefulWidget {
 }
 
 class _StatusSaverScreenState extends State<StatusSaverScreen> {
-  // WhatsApp na "currently viewed statuses" aa hidden folder ma
-  // save thay chhe. Naam ni shuruaat ma "." chhe etle e "hidden"
-  // folder gaṇay chhe (normal file manager ma na dekhay)
-  static const String _statusPath =
-      '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses';
+  static const String _statusPath = '/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses';
 
-  List<File> _statusFiles = [];
+  List<dynamic> _statusFiles = [];
   bool _isLoading = true;
   bool _permissionGranted = false;
-
-  // Kai files select thai chhe (save/share mate)
   final Set<String> _selectedPaths = {};
 
   @override
   void initState() {
     super.initState();
-    _checkPermissionAndLoad();
+    if (!kIsWeb) {
+      _checkPermissionAndLoad();
+    } else {
+      _isLoading = false;
+    }
   }
 
   Future<void> _checkPermissionAndLoad() async {
@@ -64,34 +55,9 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
     }
   }
 
-  // .Statuses folder mathi badhi image/video files vaanchvi
   Future<void> _loadStatuses() async {
     setState(() => _isLoading = true);
-
-    final dir = Directory(_statusPath);
-    List<File> files = [];
-
-    if (await dir.exists()) {
-      try {
-        final entities = dir.listSync();
-        for (var entity in entities) {
-          if (entity is File) {
-            final ext = entity.path.toLowerCase();
-            // Fakt images ane videos j levi, ".nomedia" jevi
-            // system files skip karvi
-            if (ext.endsWith('.jpg') ||
-                ext.endsWith('.jpeg') ||
-                ext.endsWith('.png') ||
-                ext.endsWith('.mp4')) {
-              files.add(entity);
-            }
-          }
-        }
-      } catch (e) {
-        // Error aave to khali list rakho
-      }
-    }
-
+    final files = FileUtils.getStatuses(_statusPath);
     setState(() {
       _statusFiles = files;
       _isLoading = false;
@@ -100,32 +66,34 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
 
   bool _isVideo(String path) => path.toLowerCase().endsWith('.mp4');
 
-  // Ek status ne gallery ma save karva mate
-  Future<void> _saveStatus(File file) async {
+  Future<void> _saveStatus(dynamic file) async {
+    final lang = localeNotifier.value;
+    if (kIsWeb) return;
     try {
       if (_isVideo(file.path)) {
-        // Video ne gallery ma save karvu
         await Gal.putVideo(file.path, album: 'Status Saver');
       } else {
-        // Image ne gallery ma save karvu
         await Gal.putImage(file.path, album: 'Status Saver');
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gallery ma save thai gayu! 📁')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppStrings.get('ss_save_success', lang)),
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Save karva ma error: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppStrings.get('ss_save_error', lang) + e.toString()),
+          behavior: SnackBarBehavior.floating,
+        ));
       }
     }
   }
 
-  // Selected badha statuses ek sathe save karva mate
   Future<void> _saveSelected() async {
+    final lang = localeNotifier.value;
+    if (kIsWeb) return;
     int savedCount = 0;
     for (var path in _selectedPaths) {
       try {
@@ -135,149 +103,199 @@ class _StatusSaverScreenState extends State<StatusSaverScreen> {
           await Gal.putImage(path, album: 'Status Saver');
         }
         savedCount++;
-      } catch (e) {
-        // Ek file fail thay to baki ni chalu rakhvi
-      }
+      } catch (e) {}
     }
-
     setState(() => _selectedPaths.clear());
-
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$savedCount status(es) save thai gaya! 📁')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$savedCount ${AppStrings.get('ss_multi_save_success', lang)}'),
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Status Saver'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          if (_selectedPaths.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.download),
-              onPressed: _saveSelected,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ValueListenableBuilder<String>(
+      valueListenable: localeNotifier,
+      builder: (context, lang, child) {
+        if (kIsWeb) {
+          return Scaffold(
+            appBar: AppBar(title: Text(AppStrings.get('ss_title', lang))),
+            body: Center(child: Text(AppStrings.get('ss_web_error', lang))),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.get('ss_title', lang)),
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.primary,
+            actions: [
+              if (_selectedPaths.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.download_done_rounded, color: Colors.white),
+                  onPressed: _saveSelected,
+                  tooltip: 'Save Selected',
+                ),
+              if (_permissionGranted)
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded),
+                  onPressed: _loadStatuses,
+                ),
+            ],
+          ),
+          body: !_permissionGranted
+              ? _buildPermissionView(lang, isDark)
+              : _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _statusFiles.isEmpty
+                      ? _buildEmptyView(lang, isDark)
+                      : _buildStatusGrid(lang, isDark),
+        );
+      },
+    );
+  }
+
+  Widget _buildPermissionView(String lang, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
             ),
-          if (_permissionGranted)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: _loadStatuses,
-            ),
+            child: const Icon(Icons.folder_open_rounded, size: 64, color: AppColors.primary),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            AppStrings.get('ss_permission_msg', lang),
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 32),
+          GradientButton(
+            text: AppStrings.get('ss_permission_button', lang),
+            onPressed: _requestPermission,
+            icon: Icons.security_rounded,
+          ),
         ],
       ),
-      body: !_permissionGranted
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.folder_off, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'Status files vaanchva mate\n"All Files Access" permission jaruri chhe',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _requestPermission,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Permission Aapo'),
-              ),
-            ],
-          ),
-        ),
-      )
-          : _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _statusFiles.isEmpty
-          ? Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.image_not_supported,
-                  size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'Koi status nathi malyu.\nPehla WhatsApp kholine '
-                    'kai status joi lo, pachi ahi refresh karo.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15),
-              ),
-            ],
-          ),
-        ),
-      )
-          : GridView.builder(
-        padding: const EdgeInsets.all(8),
-        // 3 column no grid banavvo
-        gridDelegate:
-        const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-        ),
-        itemCount: _statusFiles.length,
-        itemBuilder: (context, index) {
-          final file = _statusFiles[index];
-          final isSelected = _selectedPaths.contains(file.path);
-          final isVideo = _isVideo(file.path);
+    );
+  }
 
-          return GestureDetector(
-            onTap: () {
-              // Tap karta select/deselect thay
-              setState(() {
-                if (isSelected) {
-                  _selectedPaths.remove(file.path);
-                } else {
-                  _selectedPaths.add(file.path);
-                }
-              });
-            },
-            onLongPress: () => _saveStatus(file),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Image thumbnail - video hoy to bhi
-                // pehlu frame ke placeholder dekhay
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: isVideo
-                      ? Container(
-                    color: Colors.black87,
-                    child: const Icon(
-                      Icons.play_circle_fill,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  )
-                      : Image.file(file, fit: BoxFit.cover),
-                ),
-                // Selected hoy to green checkmark dekhay
-                if (isSelected)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.4),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.check_circle,
-                        color: Colors.white),
-                  ),
-              ],
+  Widget _buildEmptyView(String lang, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.all(40.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.image_not_supported_outlined, size: 80, color: Colors.grey.shade400),
+          const SizedBox(height: 24),
+          Text(
+            AppStrings.get('ss_empty', lang),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+              height: 1.5,
             ),
-          );
-        },
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildStatusGrid(String lang, bool isDark) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      physics: const BouncingScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 0.8,
+      ),
+      itemCount: _statusFiles.length,
+      itemBuilder: (context, index) {
+        final file = _statusFiles[index];
+        final isSelected = _selectedPaths.contains(file.path);
+        final isVideo = _isVideo(file.path);
+
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _selectedPaths.remove(file.path);
+              } else {
+                _selectedPaths.add(file.path);
+              }
+            });
+          },
+          onLongPress: () => _saveStatus(file),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                width: 3,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Placeholder/Thumbnail
+                  isVideo
+                      ? Container(
+                          color: Colors.black87,
+                          child: const Icon(Icons.play_circle_fill, color: Colors.white, size: 36),
+                        )
+                      : Image.file(file, fit: BoxFit.cover),
+                  
+                  // Gradient Overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.4),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Selection Overlay
+                  if (isSelected)
+                    Container(
+                      color: AppColors.primary.withOpacity(0.3),
+                      child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 32),
+                    ),
+
+                  // Video Indicator
+                  if (isVideo && !isSelected)
+                    const Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Icon(Icons.videocam_rounded, color: Colors.white, size: 18),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,30 +1,14 @@
 # Task Management
 
-- [/] Research and Plan Refactoring
-    - [x] List current files
-    - [/] Design component separation
-- [ ] Create Directory Structure
-- [ ] Implement Configuration and State Files
-    - [ ] `lib/config/ad_config.dart`
-    - [ ] `lib/state/app_notifiers.dart`
-- [ ] Implement Services and Models
-    - [ ] `lib/services/notification_service.dart`
-    - [ ] `lib/services/interstitial_ad_manager.dart`
-    - [ ] `lib/models/media_category.dart`
-- [ ] Implement Screens
-    - [ ] `lib/screens/premium_screen.dart`
-    - [ ] `lib/screens/direct_chat_screen.dart`
-    - [ ] `lib/screens/status_saver_screen.dart`
-    - [ ] `lib/screens/text_repeater_screen.dart`
-    - [ ] `lib/screens/blank_message_screen.dart`
-    - [ ] `lib/screens/qr_generator_screen.dart`
-    - [ ] `lib/screens/qr_scanner_screen.dart`
-    - [ ] `lib/screens/category_files_screen.dart`
-    - [ ] `lib/screens/whatsapp_cleaner_screen.dart`
-    - [ ] `lib/screens/backup_reminder_screen.dart`
-    - [ ] `lib/screens/home_screen.dart`
-- [ ] Finalize App and Main
-    - [ ] `lib/app.dart`
-    - [ ] `lib/main.dart`
+- [/] Re-integrate Firebase for Feedback
+    - [ ] Add `firebase_core` and `cloud_firestore` to `pubspec.yaml`
+    - [ ] Re-create `lib/firebase_options.dart`
+    - [ ] Re-create `lib/services/firestore_service.dart`
+    - [ ] Re-create `lib/screens/feedback_screen.dart`
+    - [ ] Update `lib/main.dart` to initialize Firebase
+    - [ ] Update `lib/screens/home_screen.dart` to include Feedback card
+    - [ ] Re-configure Android `build.gradle.kts` and `settings.gradle.kts`
 - [ ] Verification
-    - [ ] Run build to check for errors
+    - [ ] Run `flutter pub get`
+    - [ ] Run `flutter analyze`
+    - [ ] Run `flutter build apk --debug`

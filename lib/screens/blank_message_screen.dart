@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../state/app_strings.dart';
+import '../config/app_theme.dart';
+import '../widgets/gradient_button.dart';
 
-// ============================================================
-// BLANK MESSAGE - Khali/invisible message WhatsApp par moklva mate
-// ============================================================
-// Concept: WhatsApp truly-empty message send nathi karva deto.
-// Etle apde "invisible" Unicode character vaparie chhiye -
-// aa character najare dekhato nathi, pan WhatsApp mate valid
-// text chhe, etle message send thai jay chhe (khali jevo dekhay).
-// ============================================================
 class BlankMessageScreen extends StatefulWidget {
   const BlankMessageScreen({super.key});
 
@@ -17,30 +12,24 @@ class BlankMessageScreen extends StatefulWidget {
 }
 
 class _BlankMessageScreenState extends State<BlankMessageScreen> {
-  // U+3164 = Hangul Filler character - najare khali dekhay chhe
-  // pan actually ek valid character chhe
   static const String _invisibleChar = '\u3164';
-
-  // User ketla "blank lines" moklva mage chhe e select kare chhe
   int _lineCount = 1;
 
-  // Aa function invisible characters ne WhatsApp ma share kare chhe
   Future<void> _sendBlankMessage() async {
-    // Invisible character ne _lineCount vaar repeat karie,
-    // dareke vachche new line (\n) mukine
+    final lang = localeNotifier.value;
     String blankText = List.filled(_lineCount, _invisibleChar).join('\n');
-
     final String encodedText = Uri.encodeComponent(blankText);
     final Uri whatsappUrl = Uri.parse('https://wa.me/?text=$encodedText');
 
     if (await canLaunchUrl(whatsappUrl)) {
       await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
     } else {
-      // Jo error aave to user ne message batavva mate SnackBar vaparyu
-      // (niche thi ek chhoti popup dekhay chhe)
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('WhatsApp khuli na shakyu')),
+          SnackBar(
+            content: Text(AppStrings.get('bm_whatsapp_error', lang)),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -48,120 +37,144 @@ class _BlankMessageScreenState extends State<BlankMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Blank Message'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Explanation card - user ne samjavva mate
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.green[50],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text(
-                'Aa feature ek "invisible" message moklse jethi WhatsApp '
-                    'chat ma khali/blank message aavyu hoy tevu lagshe.',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            const SizedBox(height: 24),
-
-            const Text(
-              'Ketla khali line moklva chhe:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            // Slider - user finger thi ghasarke number select kare chhe
-            Row(
+    return ValueListenableBuilder<String>(
+      valueListenable: localeNotifier,
+      builder: (context, lang, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.get('bm_appbar_title', lang)),
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.primary,
+          ),
+          body: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: Slider(
-                    value: _lineCount.toDouble(),
-                    min: 1,
-                    max: 20,
-                    divisions: 19,
-                    activeColor: Colors.green,
-                    // Aa label slider ni upar current value batave chhe
-                    label: _lineCount.toString(),
-                    onChanged: (double value) {
-                      // setState = screen ne naavi value sathe redraw karo
-                      setState(() {
-                        _lineCount = value.toInt();
-                      });
-                    },
-                  ),
-                ),
-                // Current selected number, box ma
+                // Info Card
                 Container(
-                  width: 40,
-                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   child: Text(
-                    '$_lineCount',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    AppStrings.get('bm_explanation', lang),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+                      height: 1.5,
                     ),
                   ),
                 ),
+
+                const Spacer(),
+
+                // Slider Control Section
+                Column(
+                  children: [
+                    Text(
+                      AppStrings.get('bm_line_count_label', lang),
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: isDark ? [] : [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              value: _lineCount.toDouble(),
+                              min: 1,
+                              max: 20,
+                              divisions: 19,
+                              activeColor: AppColors.primary,
+                              label: _lineCount.toString(),
+                              onChanged: (double value) {
+                                setState(() => _lineCount = value.toInt());
+                              },
+                            ),
+                          ),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '$_lineCount',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // Visual Preview Section
+                Container(
+                  height: 140,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF202C33) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200, width: 2),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.visibility_off_rounded, color: Colors.grey.shade400, size: 32),
+                        const SizedBox(height: 12),
+                        Text(
+                          AppStrings.get('bm_preview_text', lang),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 40),
+
+                GradientButton(
+                  text: AppStrings.get('bm_send_button', lang),
+                  onPressed: _sendBlankMessage,
+                  icon: Icons.send_rounded,
+                ),
+                
+                const SizedBox(height: 12),
               ],
             ),
-
-            const SizedBox(height: 24),
-
-            // Preview box - batave chhe ke kevu dekhashe (khali jevu)
-            const Text(
-              'Preview:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              height: 100,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey[300]!),
-              ),
-              child: const Text(
-                '(najare kai j nahi dekhay - e j to khaas vaat chhe!)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ),
-
-            const Spacer(),
-
-            // Send button
-            ElevatedButton.icon(
-              onPressed: _sendBlankMessage,
-              icon: const Icon(Icons.chat, size: 20),
-              label: const Text(
-                'Send Blank Message',
-                style: TextStyle(fontSize: 16),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,55 +1,36 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'dart:io';
+import '../services/file_utils.dart';
 import '../services/interstitial_ad_manager.dart';
+import '../state/app_strings.dart';
+import '../config/app_theme.dart';
 
-// ============================================================
-// CATEGORY FILES SCREEN - Ek category ni andar ni files batave,
-// select kari ne delete karva ni option sathe
-// ============================================================
 class CategoryFilesScreen extends StatefulWidget {
   final String categoryName;
   final String folderPath;
 
-  const CategoryFilesScreen({
-    super.key,
-    required this.categoryName,
-    required this.folderPath,
-  });
+  const CategoryFilesScreen({super.key, required this.categoryName, required this.folderPath});
 
   @override
   State<CategoryFilesScreen> createState() => _CategoryFilesScreenState();
 }
 
 class _CategoryFilesScreenState extends State<CategoryFilesScreen> {
-  List<File> _files = [];
-  // Kaya files select thayeli chhe e track karva mate (delete mate)
+  List<dynamic> _files = [];
   final Set<String> _selectedPaths = {};
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadFiles();
+    if (!kIsWeb) {
+      _loadFiles();
+    }
   }
 
   Future<void> _loadFiles() async {
     setState(() => _isLoading = true);
-    final dir = Directory(widget.folderPath);
-    List<File> files = [];
-
-    if (await dir.exists()) {
-      try {
-        final entities = dir.listSync(recursive: true);
-        for (var entity in entities) {
-          if (entity is File) {
-            files.add(entity);
-          }
-        }
-      } catch (e) {
-        // Error aave to khali list rakho
-      }
-    }
-
+    final files = FileUtils.listDirectory(widget.folderPath);
     setState(() {
       _files = files;
       _isLoading = false;
@@ -63,22 +44,26 @@ class _CategoryFilesScreenState extends State<CategoryFilesScreen> {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  // Selected files ne delete karva mate
   Future<void> _deleteSelected() async {
-    // Confirmation dialog batavvo - user ne khatri karva mate
+    final lang = localeNotifier.value;
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Karvu?'),
-        content: Text('${_selectedPaths.length} files delete thai jashe. Aa pacha nahi aavi shake.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(AppStrings.get('cf_delete_title', lang)),
+        content: Text('${_selectedPaths.length} ${AppStrings.get('cf_delete_msg', lang)}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text(AppStrings.get('cf_cancel', lang)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              minimumSize: const Size(80, 40),
+            ),
+            child: Text(AppStrings.get('cf_delete_button', lang)),
           ),
         ],
       ),
@@ -86,52 +71,97 @@ class _CategoryFilesScreenState extends State<CategoryFilesScreen> {
 
     if (confirm != true) return;
 
-    // Dareke selected file ne delete karo
     for (var path in _selectedPaths) {
-      try {
-        await File(path).delete();
-      } catch (e) {
-        // Jo koi file delete na thai shake to skip karo
-      }
+      await FileUtils.deleteFile(path);
     }
 
     _selectedPaths.clear();
-    _loadFiles(); // List firi load karo (delete thayela files hatavva)
-
-    // Delete puru thai gayu, have ek interstitial ad batavo
-    // (fakt free user ne j dekhashe)
+    _loadFiles();
     InterstitialAdManager.showAdIfNotPremium();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.categoryName),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          if (_selectedPaths.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: _deleteSelected,
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return ValueListenableBuilder<String>(
+      valueListenable: localeNotifier,
+      builder: (context, lang, child) {
+        if (kIsWeb) {
+          return Scaffold(
+            appBar: AppBar(title: Text(widget.categoryName)),
+            body: Center(child: Text(AppStrings.get('cf_web_error', lang))),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(widget.categoryName),
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.primary,
+            actions: [
+              if (_selectedPaths.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
+                  onPressed: _deleteSelected,
+                ),
+            ],
+          ),
+          body: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _files.isEmpty
+                  ? _buildEmptyState(lang, isDark)
+                  : _buildFileList(isDark),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(String lang, bool isDark) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.folder_off_rounded, size: 80, color: Colors.grey.withOpacity(0.3)),
+          const SizedBox(height: 16),
+          Text(
+            AppStrings.get('cf_empty', lang),
+            style: TextStyle(color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext),
+          ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _files.isEmpty
-          ? const Center(child: Text('Aa category ma koi file nathi'))
-          : ListView.builder(
-        itemCount: _files.length,
-        itemBuilder: (context, index) {
-          final file = _files[index];
-          final isSelected = _selectedPaths.contains(file.path);
-          final fileName = file.path.split('/').last;
+    );
+  }
 
-          return ListTile(
+  Widget _buildFileList(bool isDark) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      physics: const BouncingScrollPhysics(),
+      itemCount: _files.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final file = _files[index];
+        final isSelected = _selectedPaths.contains(file.path);
+        final fileName = file.path.split('/').last;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : Colors.transparent,
+              width: 2,
+            ),
+            boxShadow: isDark ? [] : [
+              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             leading: Checkbox(
               value: isSelected,
+              activeColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
               onChanged: (bool? checked) {
                 setState(() {
                   if (checked == true) {
@@ -142,19 +172,26 @@ class _CategoryFilesScreenState extends State<CategoryFilesScreen> {
                 });
               },
             ),
-            title: Text(fileName, overflow: TextOverflow.ellipsis),
+            title: Text(
+              fileName,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
             subtitle: FutureBuilder<int>(
-              future: file.length(),
+              future: FileUtils.getFileLength(file),
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
-                  return Text(_formatSize(snapshot.data!));
+                  return Text(
+                    _formatSize(snapshot.data!),
+                    style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                  );
                 }
                 return const Text('...');
               },
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

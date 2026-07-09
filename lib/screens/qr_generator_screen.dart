@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import '../state/app_strings.dart';
+import '../config/app_theme.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/custom_text_field.dart';
 
-// ============================================================
-// QR GENERATOR - Phone number mathi WhatsApp chat QR code
-// ============================================================
-// Concept: user no phone number levu, wa.me link banavvi,
-// ane e link ne QR code ma convert karvi. Koi bijo vyakti
-// aa QR scan kare to seedhu WhatsApp chat khuli jay - contact
-// save karya vagar.
-// ============================================================
 class QrGeneratorScreen extends StatefulWidget {
   const QrGeneratorScreen({super.key});
 
@@ -17,21 +13,14 @@ class QrGeneratorScreen extends StatefulWidget {
 }
 
 class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
-  // Country code ane number mate alag-alag controllers
-  final TextEditingController _countryCodeController =
-  TextEditingController(text: '91'); // Default India (+91)
+  final TextEditingController _countryCodeController = TextEditingController(text: '91');
   final TextEditingController _phoneController = TextEditingController();
-
-  // Aa variable ma final wa.me link store thay chhe
-  // Jyare khali hoy tyare QR na dekhay
   String _qrData = '';
 
-  // "Generate QR" button dabave tyare aa function chale chhe
   void _generateQr() {
+    final lang = localeNotifier.value;
     String countryCode = _countryCodeController.text.trim();
     String phone = _phoneController.text.trim();
-
-    // Number mathi spaces, dashes, + hatavva mate (jo user e nakhya hoy)
     phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
     countryCode = countryCode.replaceAll(RegExp(r'[^0-9]'), '');
 
@@ -39,16 +28,13 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
       setState(() {
         _qrData = '';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Krupa karine country code ane number nakho'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(AppStrings.get('qg_error_empty', lang)),
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 
-    // wa.me link format: https://wa.me/<countrycode><number>
-    // Dakhla tarike: https://wa.me/919876543210
     setState(() {
       _qrData = 'https://wa.me/$countryCode$phone';
     });
@@ -56,99 +42,157 @@ class _QrGeneratorScreenState extends State<QrGeneratorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('QR Generator'),
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Country Code:',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _countryCodeController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                prefixText: '+',
-                hintText: 'Dakhla tarike: 91',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            const SizedBox(height: 20),
-
-            const Text(
-              'Phone Number (without country code):',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                hintText: 'Dakhla tarike: 9876543210',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: _generateQr,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text(
-                'Generate QR',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-
-            const SizedBox(height: 30),
-
-            // QR code fakt tyare j dekhay jyare _qrData khali na hoy
-            if (_qrData.isNotEmpty) ...[
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.all(16),
+    return ValueListenableBuilder<String>(
+      valueListenable: localeNotifier,
+      builder: (context, lang, child) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.get('qg_title', lang)),
+            backgroundColor: isDark ? AppColors.darkSurface : AppColors.primary,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Input Form
+                Container(
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
+                    color: isDark ? AppColors.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: isDark ? [] : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 20,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
                   ),
-                  // QrImageView = qr_flutter package no widget je
-                  // actual QR code draw kare chhe
-                  child: QrImageView(
-                    data: _qrData, // Aa j text/link QR ma encode thay chhe
-                    version: QrVersions.auto,
-                    size: 220,
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: CustomTextField(
+                              controller: _countryCodeController,
+                              label: AppStrings.get('qg_country_code', lang),
+                              hint: '91',
+                              icon: Icons.public_rounded,
+                              keyboardType: TextInputType.number,
+                              prefixText: '+',
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: CustomTextField(
+                              controller: _phoneController,
+                              label: AppStrings.get('qg_phone_number', lang),
+                              hint: '9876543210',
+                              icon: Icons.phone_android_rounded,
+                              keyboardType: TextInputType.phone,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                      GradientButton(
+                        text: AppStrings.get('qg_generate_button', lang),
+                        onPressed: _generateQr,
+                        icon: Icons.qr_code_rounded,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  _qrData,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
-                ),
-              ),
-            ],
-          ],
-        ),
+
+                const SizedBox(height: 32),
+
+                // QR Result Section
+                if (_qrData.isNotEmpty)
+                  _buildQrResult(lang, isDark)
+                else
+                  _buildEmptyState(isDark),
+                
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQrResult(String lang, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF202C33) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200, width: 2),
       ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: QrImageView(
+              data: _qrData,
+              version: QrVersions.auto,
+              size: 200,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF000000),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF000000),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _qrData,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: isDark ? AppColors.darkSubtext : AppColors.lightSubtext,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(bool isDark) {
+    return Column(
+      children: [
+        const SizedBox(height: 40),
+        Icon(Icons.qr_code_rounded, size: 100, color: Colors.grey.withOpacity(0.2)),
+        const SizedBox(height: 16),
+        Text(
+          'Enter details above to generate QR',
+          style: TextStyle(
+            color: Colors.grey.withOpacity(0.5),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }

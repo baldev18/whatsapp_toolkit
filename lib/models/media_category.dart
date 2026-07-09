@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 
-// ============================================================
-// WHATSAPP CLEANER - Junk files (photos/videos/docs) find & delete
-// ============================================================
-
-// Ek "category" (jem ke Images, Video) no data rakhva mate class
 class MediaCategory {
-  final String name; // Screen par dekhaay tevu naam
-  final String folderName; // Actual folder nu naam (WhatsApp andar)
+  final String name;
+  final String folderName;
   final IconData icon;
 
   MediaCategory({

@@ -1,56 +1,51 @@
-# Refactoring WhatsApp Toolkit into Modular Structure
+# Re-integrating Firebase for Feedback Feature
 
-The goal is to split the monolithic `lib/main.dart` into a clean, standard Flutter project structure for better maintainability and readability, while preserving all logic and comments.
+This plan restores Firebase support specifically to enable a database-backed Feedback screen.
+
+## User Review Required
+
+- I will use the **Firebase project configuration** from the previous turns (`whatsapp-toolkit-39bdc`). Please ensure you still have the `google-services.json` file if you plan to build for Android, otherwise I will rely on `firebase_options.dart`.
 
 ## Proposed Changes
 
-### Configuration and State
+### 1. Dependencies and Config
 
-#### [NEW] [ad_config.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/config/ad_config.dart)
-- Contains `AdConfig` class.
+#### [pubspec.yaml](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/pubspec.yaml)
+- Add `firebase_core: ^3.8.0` and `cloud_firestore: ^5.5.0`.
 
-#### [NEW] [app_notifiers.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/state/app_notifiers.dart)
-- Contains `isPremiumNotifier` and `themeNotifier`.
+#### [NEW] [firebase_options.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/firebase_options.dart)
+- Restore with the previous project credentials.
 
-### Services and Models
+#### [NEW] [firestore_service.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/services/firestore_service.dart)
+- Restore service for sending messages to Firestore.
 
-#### [NEW] [notification_service.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/services/notification_service.dart)
-- Contains `notificationsPlugin` instance and relevant imports.
-
-#### [NEW] [interstitial_ad_manager.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/services/interstitial_ad_manager.dart)
-- Contains `InterstitialAdManager` class.
-
-#### [NEW] [media_category.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/models/media_category.dart)
-- Contains `MediaCategory` class.
-
-### Screens
-
-#### [NEW] [premium_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/premium_screen.dart)
-#### [NEW] [direct_chat_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/direct_chat_screen.dart)
-#### [NEW] [status_saver_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/status_saver_screen.dart)
-#### [NEW] [text_repeater_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/text_repeater_screen.dart)
-#### [NEW] [blank_message_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/blank_message_screen.dart)
-#### [NEW] [qr_generator_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/qr_generator_screen.dart)
-#### [NEW] [qr_scanner_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/qr_scanner_screen.dart)
-#### [NEW] [category_files_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/category_files_screen.dart)
-#### [NEW] [whatsapp_cleaner_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/whatsapp_cleaner_screen.dart)
-#### [NEW] [backup_reminder_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/backup_reminder_screen.dart)
-#### [NEW] [home_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/home_screen.dart)
-
-### App Entry Point
-
-#### [NEW] [app.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/app.dart)
-- Contains `MyApp` widget.
+### 2. UI and Logic
 
 #### [main.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/main.dart)
-- Simplified to only contain `main()` and initialization logic.
+- Re-add `Firebase.initializeApp()`.
+
+#### [NEW] [feedback_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/feedback_screen.dart)
+- Restore the Feedback UI.
+
+#### [home_screen.dart](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/lib/screens/home_screen.dart)
+- Re-add the "Feedback" option to the list of tools.
+
+### 3. Android Configuration
+
+#### [android/app/build.gradle.kts](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/android/app/build.gradle.kts)
+- Re-add `id("com.google.gms.google-services")`.
+
+#### [android/settings.gradle.kts](file:///C:/Users/BALDEVSINH/StudioProjects/ whatsapp_toolkit/android/settings.gradle.kts)
+- Re-add the Google Services plugin definition.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- `flutter build apk` (or similar build command) to ensure no compilation errors.
+- `flutter pub get`
+- `flutter analyze`
+- `flutter build apk --debug`
 
 ### Manual Verification
-- Verify that all imports are correctly resolved and the project structure matches the request.
+- Verify the Feedback screen appears on Home and successfully submits data (handled by user in app).
